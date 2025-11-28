@@ -7,7 +7,7 @@ import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import AddItem from '@/components/AddItem';
 import ItemList from '@/components/ItemList';
-import {Timestamp} from "firebase/firestore";
+import { Timestamp } from "firebase/firestore";
 
 // Define a proper type for Item
 export interface Item {
@@ -18,7 +18,14 @@ export interface Item {
     createdAt?: Timestamp;
 }
 
-export default function ListPage({ params }: { params: { listId: string } }) {
+// Props type for client component
+interface ListPageProps {
+    params: {
+        listId: string;
+    };
+}
+
+export default function ListPage({ params }: ListPageProps) {
     const { listId } = params;
     const [items, setItems] = useState<Item[]>([]);
     const [user, setUser] = useState<User | null>(null);
