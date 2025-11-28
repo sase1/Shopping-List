@@ -18,6 +18,7 @@ import {
     Timestamp,
 } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
+import QuickProductsPanel from "@/components/QuickProductsPanel";
 
 interface Item {
     id: string;
@@ -57,10 +58,11 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
 
     const [newItemName, setNewItemName] = useState('');
-    const [newItemCategory, setNewItemCategory] = useState<string | null>(null);
+    const [newItemCategory, setNewItemCategory] = useState<string>('');
     const [newCategoryName, setNewCategoryName] = useState('');
     const [filterCategory, setFilterCategory] = useState<string | 'All'>('All');
     const [search, setSearch] = useState('');
+    const [categoryError, setCategoryError] = useState('');
 
     const router = useRouter();
 
@@ -132,10 +134,17 @@ export default function DashboardPage() {
                     snapshot => {
                         const loaded = snapshot.docs.map(d => ({ ...(d.data() as Category), id: d.id }));
                         setCategories(loaded);
-                        if (!newItemCategory && loaded.length) setNewItemCategory(loaded[0].name);
-                        else if (!loaded.length) setNewItemCategory(null);
+
+                        // ❗ If no categories exist → reset selection
+                        if (loaded.length === 0) {
+                            setNewItemCategory('');
+                        }
+
+                        // ❗ Do NOT auto-select anything when categories load
+                        // (remove your old auto-select code completely)
                     }
                 );
+
 
 
             } catch (err) {
@@ -181,16 +190,26 @@ export default function DashboardPage() {
         if (!group) return;
         const name = newCategoryName.trim();
         if (!name) return;
+
+        const duplicate = categories.some(c => c.name.toLowerCase() === name.toLowerCase());
+        if (duplicate) {
+            setCategoryError('Category already exists');
+            return;
+        }
+
         try {
             await addDoc(collection(db, 'groups', group.id, 'categories'), {
                 name,
                 createdAt: serverTimestamp(),
             });
+
             setNewCategoryName('');
+            setNewItemCategory(''); // 🔥 prevents auto-select
         } catch (err) {
             console.error('Failed to add category', err);
         }
     };
+
 
     // delete category
     const handleDeleteCategory = async (categoryId: string) => {
@@ -214,9 +233,9 @@ export default function DashboardPage() {
     };
 
     // add item
-    const handleAddItem = async () => {
+    const handleAddItem = async (name: string) => {
         if (!group) return;
-        const name = newItemName.trim();
+        name = name.trim();
         if (!name) return;
         try {
             await addDoc(collection(db, 'groups', group.id, 'items'), {
@@ -226,7 +245,6 @@ export default function DashboardPage() {
                 category: newItemCategory ?? 'Other',
                 createdAt: serverTimestamp(),
             });
-            setNewItemName('');
         } catch (err) {
             console.error('Failed to add item', err);
         }
@@ -235,7 +253,8 @@ export default function DashboardPage() {
     const handleKeyDownAdd = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            handleAddItem();
+            handleAddItem(newItemName); // pass the input value
+            setNewItemName(''); // clear input if needed
         }
     };
 
@@ -299,9 +318,12 @@ export default function DashboardPage() {
                     {/* Group card */}
                     <div className="bg-white p-4 rounded-xl shadow">
                         <h2 className="text-lg font-semibold text-black">{group.name}</h2>
-                        <div className="mt-2 text-sm text-black">Group ID: <span className="font-mono">{group.id}</span></div>
+                        <div className="mt-2 text-sm text-black">Group ID: <span className="font-mono">{group.id}</span>
+                        </div>
                         <div className="mt-3">
-                            <button onClick={() => navigator.clipboard.writeText(group.id)} className="text-sm bg-sky-600 text-white px-2 py-1 rounded">Copy ID</button>
+                            <button onClick={() => navigator.clipboard.writeText(group.id)}
+                                    className="text-sm bg-sky-600 text-white px-2 py-1 rounded">Copy ID
+                            </button>
                         </div>
                     </div>
 
@@ -316,19 +338,38 @@ export default function DashboardPage() {
                             <div className="flex gap-2">
                                 <input
                                     value={newCategoryName}
-                                    onChange={e => setNewCategoryName(e.target.value)}
+                                    onChange={e => {
+                                        setNewCategoryName(e.target.value);
+                                        setCategoryError(''); // clear when typing
+                                    }}
                                     placeholder="New category"
                                     className="flex-1 border px-2 py-1 rounded text-black"
                                 />
-                                <button onClick={handleAddCategory} className="bg-sky-600 text-white px-3 py-1 rounded">Add</button>
+                                <button
+                                    onClick={handleAddCategory}
+                                    className="bg-sky-600 text-white px-3 py-1 rounded"
+                                >
+                                    Add
+                                </button>
                             </div>
 
+                            {categoryError && (
+                                <p className="text-red-600 text-sm mt-1">{categoryError}</p>
+                            )}
+
+
                             <div className="mt-2 flex flex-col gap-2 max-h-44 overflow-auto pr-1">
+                                <button
+                                    onClick={() => setFilterCategory('All')}
+                                    className={`text-left px-2 py-1 rounded ${filterCategory === 'All' ? 'bg-gray-700' : 'hover:bg-gray-50 text-black'}`}
+                                >
+                                    All
+                                </button>
                                 {categories.map(cat => (
                                     <div key={cat.id} className="flex items-center justify-between">
                                         <button
                                             onClick={() => setFilterCategory(cat.name)}
-                                            className={`text-left px-2 py-1 rounded flex-1 ${filterCategory === cat.name ? 'bg-gray-600' : 'hover:bg-gray-50 text-black'}`}
+                                            className={`text-left px-2 py-1 rounded flex-1 ${filterCategory === cat.name ? 'bg-gray-700' : 'hover:bg-gray-50 text-black'}`}
                                         >
                                             {cat.name}
                                         </button>
@@ -345,42 +386,38 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* Members */}
-                    <div className="bg-white p-4 rounded-xl shadow">
-                        <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-black">Members</h3>
-                            <span className="text-xs text-black">{members.length}</span>
-                        </div>
 
-                        <div className="mt-3 flex flex-col gap-3 max-h-64 overflow-auto pr-1">
-                            {members.map(m => (
-                                <div key={m.uid} className="flex items-center gap-3">
-                                    <div
-                                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-gray-900"
-                                        style={{ background: m.avatarColor ?? deterministicColorFromString(m.uid) }}
-                                    >
-                                        {initialsOf(m.name ?? m.email ?? m.uid)}
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-medium text-black">{m.name || m.email || m.uid}</span>
-                                        {/*<span className="text-xs text-black font-mono">UID: {m.uid}</span>*/}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
                 </aside>
 
                 {/* MAIN: items (span 3 cols on large) */}
-                <main className="lg:col-span-3 space-y-6">
+                <main className="lg:col-span-2 space-y-6">
                     {/* header */}
-                    <div className="bg-white p-6 rounded-xl shadow flex items-center justify-between">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-800">{group.name || 'My Group'}</h1>
-                            <p className="text-xs text-black">Share the Group ID to invite others to your list!</p>
+                    <div className="bg-white p-6 rounded-xl shadow flex items-start justify-between">
+                        <div className="flex flex-col gap-2 flex-1">
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-800">{group.name || 'My Group'}</h1>
+                                <p className="text-xs text-black">
+                                    Share the Group ID to invite others to your list!
+                                </p>
+                            </div>
+
+
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 ml-4">
+                            <button
+                                onClick={handleLogout}
+                                className="bg-red-600 text-white px-4 py-2 rounded"
+                            >
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+
+
+                    {/* add item */}
+                    <div className="bg-white p-4 rounded-xl shadow">
+                        <div className="mb-4">
                             <input
                                 type="text"
                                 placeholder="Search items..."
@@ -388,12 +425,7 @@ export default function DashboardPage() {
                                 onChange={e => setSearch(e.target.value)}
                                 className="border px-3 py-2 rounded-md text-black"
                             />
-                            <button onClick={handleLogout} className="bg-red-600 text-white px-4 py-2 rounded">Logout</button>
                         </div>
-                    </div>
-
-                    {/* add item */}
-                    <div className="bg-white p-4 rounded-xl shadow">
                         <div className="flex gap-3">
                             <input
                                 type="text"
@@ -416,9 +448,13 @@ export default function DashboardPage() {
                                         {c.name}
                                     </option>
                                 ))}
-                                <option value="Other">Other</option>
+                                <option value="Uncategorized">Uncategorized</option>
                             </select>
-                            <button onClick={handleAddItem} className="bg-sky-600 text-white px-4 py-2 rounded">Add
+                            <button
+                                onClick={() => handleAddItem(newItemName)}
+                                className="bg-sky-600 text-white px-4 py-2 rounded"
+                            >
+                                Add
                             </button>
                         </div>
 
@@ -458,25 +494,67 @@ export default function DashboardPage() {
                     {/* items list */}
                     <div className="space-y-3">
                         {filteredItems.length === 0 ? (
-                            <div className="bg-white p-6 rounded-xl shadow text-center text-gray-500">No items yet.</div>
+                            <div className="bg-white p-6 rounded-xl shadow text-center text-gray-500">No items
+                                yet.</div>
                         ) : (
                             filteredItems.map(item => (
-                                <div key={item.id} className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition">
+                                <div key={item.id}
+                                     className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition">
                                     <div className="flex items-center gap-4">
-                                        <input type="checkbox" checked={item.checked} onChange={() => handleToggle(item)} className="w-5 h-5" />
+                                        <input type="checkbox" checked={item.checked}
+                                               onChange={() => handleToggle(item)} className="w-5 h-5"/>
                                         <div>
-                                            <div className={item.checked ? 'line-through text-gray-400 font-medium' : 'text-gray-800 font-medium'}>
+                                            <div
+                                                className={item.checked ? 'line-through text-gray-400 font-medium' : 'text-gray-800 font-medium'}>
                                                 {item.name}
                                             </div>
-                                            <div className="text-xs text-gray-500 mt-1">{item.category ?? 'Uncategorized'} • added by {getDisplayName(item.addedByUid)}</div>
+                                            <div
+                                                className="text-xs text-gray-500 mt-1">{item.category ?? 'Uncategorized'} •
+                                                added by {getDisplayName(item.addedByUid)}</div>
                                         </div>
                                     </div>
-                                    <div className="text-xs text-gray-400 font-mono">{item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleString() : ''}</div>
+                                    <div
+                                        className="text-xs text-gray-400 font-mono">{item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleString() : ''}</div>
                                 </div>
                             ))
                         )}
                     </div>
                 </main>
+                <aside className="lg:col-span-1 space-y-6">
+
+                    {/* Members */}
+                    <div className="bg-white p-4 rounded-xl shadow">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-black">Members</h3>
+                            <span className="text-xs text-black">{members.length}</span>
+                        </div>
+
+                        <div className="mt-3 flex flex-col gap-3 max-h-64 overflow-auto pr-1">
+                            {members.map(m => (
+                                <div key={m.uid} className="flex items-center gap-3">
+                                    <div
+                                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-gray-900"
+                                        style={{background: m.avatarColor ?? deterministicColorFromString(m.uid)}}
+                                    >
+                                        {initialsOf(m.name ?? m.email ?? m.uid)}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span
+                                            className="text-sm font-medium text-black">{m.name || m.email || m.uid}</span>
+                                        {/*<span className="text-xs text-black font-mono">UID: {m.uid}</span>*/}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+
+                    <QuickProductsPanel
+                        onAddItem={handleAddItem}
+                        groupId={group.id}
+                    />
+
+                </aside>
             </div>
         </div>
     );
