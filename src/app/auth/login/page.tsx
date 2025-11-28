@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { login } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { AuthError } from 'firebase/auth';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -18,17 +19,18 @@ export default function LoginPage() {
         try {
             await login(email, password);
             router.push('/dashboard');
-        } catch (err: any) {
+        } catch (err) {
+            // Type guard for Firebase AuthError
+            const authErr = err as AuthError;
 
-            // Firebase has specific error codes — let's make nicer messages
             const msg =
-                err.code === 'auth/user-not-found'
+                authErr.code === 'auth/user-not-found'
                     ? 'No account found with that email.'
-                    : err.code === 'auth/wrong-password'
+                    : authErr.code === 'auth/wrong-password'
                         ? 'Incorrect password. Please try again.'
-                        : err.code === 'auth/invalid-email'
+                        : authErr.code === 'auth/invalid-email'
                             ? 'Invalid email format.'
-                            : err.message || 'Something went wrong.';
+                            : authErr.message || 'Something went wrong.';
 
             setErrorMessage(msg);
         }
@@ -40,7 +42,6 @@ export default function LoginPage() {
                 <h3 className="text-2xl font-bold mb-6 text-gray-800 text-center">Log In</h3>
 
                 <form onSubmit={handleLogin} className="space-y-4">
-
                     <div>
                         <label className="block text-gray-700 mb-1" htmlFor="email">
                             Email
@@ -78,7 +79,6 @@ export default function LoginPage() {
                         Log In
                     </button>
 
-                    {/* ERROR MESSAGE */}
                     {errorMessage && (
                         <p className="mt-2 text-red-600 font-medium text-center">
                             {errorMessage}

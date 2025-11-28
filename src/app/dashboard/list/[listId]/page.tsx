@@ -3,18 +3,29 @@
 import { useEffect, useState } from 'react';
 import { listenItemsForList, addItem, toggleItemChecked } from '@/lib/firestore';
 import { auth } from '@/lib/firebase';
+import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import AddItem from '@/components/AddItem';
 import ItemList from '@/components/ItemList';
+import {Timestamp} from "firebase/firestore";
+
+// Define a proper type for Item
+export interface Item {
+    id: string;
+    name: string;
+    checked: boolean;
+    addedByUid: string;
+    createdAt?: Timestamp;
+}
 
 export default function ListPage({ params }: { params: { listId: string } }) {
     const { listId } = params;
-    const [items, setItems] = useState<any[]>([]);
-    const [user, setUser] = useState<any>(null);
+    const [items, setItems] = useState<Item[]>([]);
+    const [user, setUser] = useState<User | null>(null);
 
     useEffect(() => {
         const unsubAuth = onAuthStateChanged(auth, (u) => setUser(u));
-        const unsub = listenItemsForList(listId, (docs) => setItems(docs));
+        const unsub = listenItemsForList(listId, (docs) => setItems(docs as Item[]));
         return () => {
             unsub();
             unsubAuth();
@@ -23,13 +34,12 @@ export default function ListPage({ params }: { params: { listId: string } }) {
 
     const handleAdd = async (name: string) => {
         if (!user) return alert('Not logged in');
-        await addItem(listId, name, user.uid, listId); // groupId = listId in this simple version
+        await addItem(listId, name, user.uid);
     };
 
     const handleToggle = async (itemId: string, checked: boolean) => {
         await toggleItemChecked(itemId, checked, listId);
     };
-
 
     return (
         <div>

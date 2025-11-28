@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { observeUser, logout } from '@/lib/auth';
+import type { User as FirebaseUser } from 'firebase/auth';
 import {
     doc,
     getDoc,
@@ -10,11 +11,11 @@ import {
     onSnapshot,
     addDoc,
     updateDoc,
-    deleteDoc,
     serverTimestamp,
     query,
     orderBy,
     writeBatch,
+    Timestamp,
 } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 
@@ -24,13 +25,13 @@ interface Item {
     checked: boolean;
     addedByUid: string;
     category?: string;
-    createdAt?: any;
+    createdAt?: Timestamp;
 }
 
 interface Category {
     id: string;
     name: string;
-    createdAt?: any;
+    createdAt?: Timestamp;
 }
 
 interface Member {
@@ -40,9 +41,16 @@ interface Member {
     avatarColor?: string;
 }
 
+interface Group {
+    id: string;
+    name: string;
+    members: string[];
+    createdBy: string;
+}
+
 export default function DashboardPage() {
-    const [user, setUser] = useState<any>(null);
-    const [group, setGroup] = useState<any>(null);
+    const [user, setUser] = useState<FirebaseUser | null>(null);
+    const [group, setGroup] = useState<Group | null>(null);
     const [items, setItems] = useState<Item[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [members, setMembers] = useState<Member[]>([]);
@@ -56,13 +64,11 @@ export default function DashboardPage() {
 
     const router = useRouter();
 
-    // observe auth user
     useEffect(() => {
         const unsub = observeUser(u => setUser(u));
         return () => unsub();
     }, []);
 
-    // load group, items, categories, members
     useEffect(() => {
         if (!user) return;
 
@@ -73,8 +79,7 @@ export default function DashboardPage() {
         const load = async () => {
             setLoading(true);
             try {
-                const userDocRef = doc(db, 'users', user.uid);
-                const userSnap = await getDoc(userDocRef);
+                const userSnap = await getDoc(doc(db, 'users', user.uid));
                 if (!userSnap.exists()) throw new Error('User doc not found');
 
                 const userData = userSnap.data();
@@ -83,8 +88,7 @@ export default function DashboardPage() {
 
                 const groupRef = doc(db, 'groups', groupId);
 
-                // listen to group doc (so we react to member changes / group name)
-                unsubGroup = onSnapshot(groupRef, async (gSnap) => {
+                unsubGroup = onSnapshot(groupRef, async gSnap => {
                     if (!gSnap.exists()) {
                         setGroup(null);
                         setMembers([]);
@@ -94,43 +98,46 @@ export default function DashboardPage() {
                         return;
                     }
                     const gdata = gSnap.data();
-                    setGroup({ id: groupId, ...gdata });
-
-                    // load members list from group.members array
-                    const memberUids: string[] = gdata.members || [];
-                    // fetch each user doc
-                    const memberDocs = await Promise.all(memberUids.map((uid: string) => getDoc(doc(db, 'users', uid))));
-                    const memberList: Member[] = memberDocs.map((md, idx) => {
-                        const data = md.exists() ? (md.data() as any) : {};
-                        return {
-                            uid: memberUids[idx],
-                            email: data?.email,
-                            name: data?.name ?? null,
-                            avatarColor: data?.avatarColor ?? deterministicColorFromString(memberUids[idx]),
-                        };
+                    setGroup({
+                        id: groupId,
+                        name: gdata.name,
+                        members: gdata.members || [],
+                        createdBy: gdata.createdBy,
                     });
-                    setMembers(memberList);
+
+                    // load members
+                    const memberDocs = await Promise.all(
+                        gdata.members.map((uid: string) => getDoc(doc(db, 'users', uid)))
+                    );
+                    setMembers(
+                        memberDocs.map((md, i) => {
+                            const data = md.exists() ? md.data() : {};
+                            return {
+                                uid: gdata.members[i],
+                                email: data?.email,
+                                name: data?.name ?? null,
+                                avatarColor: data?.avatarColor ?? deterministicColorFromString(gdata.members[i]),
+                            };
+                        })
+                    );
                 });
 
-                // items listener
-                const itemsCol = collection(db, 'groups', groupId, 'items');
-                unsubItems = onSnapshot(query(itemsCol, orderBy('createdAt', 'asc')), snapshot => {
-                    const loaded: Item[] = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-                    setItems(loaded);
-                });
+                unsubItems = onSnapshot(
+                    query(collection(db, 'groups', groupId, 'items'), orderBy('createdAt', 'asc')),
+                    snapshot => setItems(snapshot.docs.map(d => ({ ...(d.data() as Item), id: d.id })))
+                );
 
-                // categories listener (dynamic)
-                const categoriesCol = collection(db, 'groups', groupId, 'categories');
-                unsubCategories = onSnapshot(query(categoriesCol, orderBy('createdAt', 'asc')), snapshot => {
-                    const loaded: Category[] = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-                    setCategories(loaded);
-                    // if no selected newItemCategory, pick first category or null
-                    if (!newItemCategory && loaded.length) {
-                        setNewItemCategory(loaded[0].name);
-                    } else if (!loaded.length) {
-                        setNewItemCategory(null);
+                unsubCategories = onSnapshot(
+                    query(collection(db, 'groups', groupId, 'categories'), orderBy('createdAt', 'asc')),
+                    snapshot => {
+                        const loaded = snapshot.docs.map(d => ({ ...(d.data() as Category), id: d.id }));
+                        setCategories(loaded);
+                        if (!newItemCategory && loaded.length) setNewItemCategory(loaded[0].name);
+                        else if (!loaded.length) setNewItemCategory(null);
                     }
-                });
+                );
+
+
             } catch (err) {
                 console.error('Error loading dashboard data', err);
             } finally {
@@ -141,14 +148,12 @@ export default function DashboardPage() {
         load();
 
         return () => {
-            if (unsubGroup) unsubGroup();
-            if (unsubItems) unsubItems();
-            if (unsubCategories) unsubCategories();
+            unsubGroup?.();
+            unsubItems?.();
+            unsubCategories?.();
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
-    // helpers
     const initialsOf = (nameOrEmail?: string | null) => {
         if (!nameOrEmail) return '?';
         const parts = nameOrEmail.split(/[\s@.]+/).filter(Boolean);
@@ -157,14 +162,12 @@ export default function DashboardPage() {
         return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
     };
 
-    function deterministicColorFromString(str: string) {
+    const deterministicColorFromString = (str: string) => {
         let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash);
-        }
+        for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
         const h = Math.abs(hash) % 360;
         return `hsl(${h}deg 60% 70%)`;
-    }
+    };
 
     const getDisplayName = useCallback((uid?: string) => {
         if (!uid) return 'Unknown';
@@ -219,7 +222,7 @@ export default function DashboardPage() {
             await addDoc(collection(db, 'groups', group.id, 'items'), {
                 name,
                 checked: false,
-                addedByUid: user.uid,
+                addedByUid: user!.uid,
                 category: newItemCategory ?? 'Other',
                 createdAt: serverTimestamp(),
             });
@@ -360,7 +363,7 @@ export default function DashboardPage() {
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-sm font-medium text-black">{m.name || m.email || m.uid}</span>
-                                        <span className="text-xs text-black font-mono">UID: {m.uid}</span>
+                                        {/*<span className="text-xs text-black font-mono">UID: {m.uid}</span>*/}
                                     </div>
                                 </div>
                             ))}
@@ -422,17 +425,32 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between mt-3">
                             <div className="flex items-center gap-3">
                                 <label className="text-sm text-gray-600">Filter:</label>
-                                <select value={filterCategory} onChange={e => setFilterCategory(e.target.value as any)} className="border px-2 py-1 rounded text-black">
+                                <select
+                                    value={filterCategory}
+                                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                        setFilterCategory(e.target.value)
+                                    }
+                                    className="border px-2 py-1 rounded text-black"
+                                >
                                     <option value="All">All</option>
-                                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                    {categories.map(c => (
+                                        <option key={c.id} value={c.name}>{c.name}</option>
+                                    ))}
                                     <option value="Other">Other</option>
                                 </select>
-                                <button onClick={() => { setFilterCategory('All'); setSearch(''); }} className="text-sm text-black ml-2">Reset</button>
+                                <button onClick={() => {
+                                    setFilterCategory('All');
+                                    setSearch('');
+                                }} className="text-sm text-black ml-2">Reset
+                                </button>
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <button onClick={handleClearCompleted} className="text-sm bg-purple-800 px-3 py-1 rounded">Clear completed</button>
-                                <span className="text-sm text-gray-500">{items.filter(i => i.checked).length} completed</span>
+                                <button onClick={handleClearCompleted}
+                                        className="text-sm bg-purple-800 px-3 py-1 rounded">Clear completed
+                                </button>
+                                <span
+                                    className="text-sm text-gray-500">{items.filter(i => i.checked).length} completed</span>
                             </div>
                         </div>
                     </div>

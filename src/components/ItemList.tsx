@@ -2,14 +2,24 @@
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Timestamp } from 'firebase/firestore';
 
-export default function ItemList({
-                                     items,
-                                     onToggle,
-                                 }: {
-    items: any[];
+// Define Item type properly
+export interface Item {
+    id: string;
+    name: string;
+    checked: boolean;
+    addedByUid: string;
+    category?: string;
+    createdAt?: Timestamp;
+}
+
+interface ItemListProps {
+    items: Item[];
     onToggle: (id: string, checked: boolean) => void;
-}) {
+}
+
+export default function ItemList({ items, onToggle }: ItemListProps) {
     const [users, setUsers] = useState<Record<string, string>>({});
 
     // Preload user emails for addedByUid
@@ -19,7 +29,7 @@ export default function ItemList({
             for (const item of items) {
                 if (!u[item.addedByUid]) {
                     const docSnap = await getDoc(doc(db, 'users', item.addedByUid));
-                    u[item.addedByUid] = docSnap.exists() ? docSnap.data()?.email : 'Unknown';
+                    u[item.addedByUid] = docSnap.exists() ? (docSnap.data()?.email ?? 'Unknown') : 'Unknown';
                 }
             }
             setUsers(u);
