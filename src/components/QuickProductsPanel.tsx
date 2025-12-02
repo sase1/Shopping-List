@@ -141,7 +141,7 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
                 />
                 <button
                     onClick={handleAddBadge}
-                    className="bg-sky-600 text-white px-3 py-2 rounded hover:bg-sky-700"
+                    className="bg-sky-600 text-white px-3 py-2 rounded hover:bg-sky-700 cursor-pointer"
                 >
                     Add
                 </button>
@@ -168,7 +168,7 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
                             </button>
                             <button
                                 onClick={() => handleBadgeDelete(name)}
-                                className="ml-1 text-white font-bold hover:text-gray-200 focus:outline-none"
+                                className="ml-1 text-white font-bold hover:text-gray-200 focus:outline-none cursor-pointer"
                             >
                                 ✕
                             </button>

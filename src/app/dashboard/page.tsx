@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { db } from '@/lib/firebase';
-import { observeUser, logout } from '@/lib/auth';
-import type { User as FirebaseUser } from 'firebase/auth';
+import {useEffect, useState, useCallback, useMemo} from 'react';
+import {db} from '@/lib/firebase';
+import {observeUser, logout} from '@/lib/auth';
+import type {User as FirebaseUser} from 'firebase/auth';
 import {
     doc,
     getDoc,
@@ -17,7 +17,7 @@ import {
     writeBatch,
     Timestamp,
 } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
+import {useRouter} from 'next/navigation';
 import QuickProductsPanel from "@/components/QuickProductsPanel";
 
 interface Item {
@@ -63,6 +63,8 @@ export default function DashboardPage() {
     const [filterCategory, setFilterCategory] = useState<string | 'All'>('All');
     const [search, setSearch] = useState('');
     const [categoryError, setCategoryError] = useState('');
+    const [errorMessage, setErrorMessage] = useState("");
+    const [duplicateName, setDuplicateName] = useState("");
 
     const router = useRouter();
 
@@ -126,13 +128,13 @@ export default function DashboardPage() {
 
                 unsubItems = onSnapshot(
                     query(collection(db, 'groups', groupId, 'items'), orderBy('createdAt', 'asc')),
-                    snapshot => setItems(snapshot.docs.map(d => ({ ...(d.data() as Item), id: d.id })))
+                    snapshot => setItems(snapshot.docs.map(d => ({...(d.data() as Item), id: d.id})))
                 );
 
                 unsubCategories = onSnapshot(
                     query(collection(db, 'groups', groupId, 'categories'), orderBy('createdAt', 'asc')),
                     snapshot => {
-                        const loaded = snapshot.docs.map(d => ({ ...(d.data() as Category), id: d.id }));
+                        const loaded = snapshot.docs.map(d => ({...(d.data() as Category), id: d.id}));
                         setCategories(loaded);
 
                         // ❗ If no categories exist → reset selection
@@ -144,7 +146,6 @@ export default function DashboardPage() {
                         // (remove your old auto-select code completely)
                     }
                 );
-
 
 
             } catch (err) {
@@ -221,7 +222,7 @@ export default function DashboardPage() {
             const batch = writeBatch(db);
             toUpdate.forEach(i => {
                 const ref = doc(db, 'groups', group.id, 'items', i.id);
-                batch.update(ref, { category: 'Other' });
+                batch.update(ref, {category: 'Other'});
             });
             // delete category doc
             const catRef = doc(db, 'groups', group.id, 'categories', categoryId);
@@ -235,8 +236,25 @@ export default function DashboardPage() {
     // add item
     const handleAddItem = async (name: string) => {
         if (!group) return;
+
         name = name.trim();
         if (!name) return;
+
+        // Clear previous error
+        setErrorMessage("");
+        setDuplicateName("");
+
+        // Prevent duplicates
+        const existingItem = items.find(
+            item => item.name.trim().toLowerCase() === name.toLowerCase()
+        );
+
+        if (existingItem) {
+            setDuplicateName(existingItem.name);       // highlight this item in list
+            setErrorMessage("This item is already in the list.");
+            return;
+        }
+
         try {
             await addDoc(collection(db, 'groups', group.id, 'items'), {
                 name,
@@ -245,16 +263,41 @@ export default function DashboardPage() {
                 category: newItemCategory ?? 'Other',
                 createdAt: serverTimestamp(),
             });
+
+            // Reset everything after success
+            setNewItemName('');
+            setDuplicateName("");
         } catch (err) {
             console.error('Failed to add item', err);
         }
     };
 
+
+    const handleToggleAll = async () => {
+        if (!group || items.length === 0) return;
+
+        const allChecked = items.every(i => i.checked);
+        const batch = writeBatch(db);
+
+        items.forEach(item => {
+            const ref = doc(db, 'groups', group.id, 'items', item.id);
+            batch.update(ref, { checked: !allChecked });
+        });
+
+        try {
+            await batch.commit();
+        } catch (err) {
+            console.error("Failed to toggle all items", err);
+        }
+    };
+
+
+
     const handleKeyDownAdd = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             handleAddItem(newItemName); // pass the input value
-            setNewItemName(''); // clear input if needed
+            // setNewItemName(''); // clear input if needed
         }
     };
 
@@ -263,7 +306,7 @@ export default function DashboardPage() {
         if (!group) return;
         try {
             const ref = doc(db, 'groups', group.id, 'items', item.id);
-            await updateDoc(ref, { checked: !item.checked });
+            await updateDoc(ref, {checked: !item.checked});
         } catch (err) {
             console.error('Failed to toggle', err);
         }
@@ -322,7 +365,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="mt-3">
                             <button onClick={() => navigator.clipboard.writeText(group.id)}
-                                    className="text-sm bg-sky-600 text-white px-2 py-1 rounded">Copy ID
+                                    className="text-sm bg-sky-600 hover:bg-sky-700 text-white px-2 py-1 rounded cursor-pointer">Copy ID
                             </button>
                         </div>
                     </div>
@@ -347,7 +390,7 @@ export default function DashboardPage() {
                                 />
                                 <button
                                     onClick={handleAddCategory}
-                                    className="bg-sky-600 text-white px-3 py-1 rounded"
+                                    className="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1 rounded cursor-pointer"
                                 >
                                     Add
                                 </button>
@@ -407,7 +450,7 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-3 ml-4">
                             <button
                                 onClick={handleLogout}
-                                className="bg-red-600 text-white px-4 py-2 rounded"
+                                className="bg-red-600 hover:bg-red-700 cursor-pointer text-white px-4 py-2 rounded"
                             >
                                 Logout
                             </button>
@@ -427,82 +470,100 @@ export default function DashboardPage() {
                             />
                         </div>
                         <div className="flex gap-3">
-                            <input
-                                type="text"
-                                placeholder="Add new item and press Enter"
-                                value={newItemName}
-                                onChange={e => setNewItemName(e.target.value)}
-                                onKeyDown={handleKeyDownAdd}
-                                className="flex-1 border px-4 py-2 rounded text-black"
-                            />
-                            <select
-                                value={newItemCategory ?? ''}
-                                onChange={e => setNewItemCategory(e.target.value)}
-                                className="border px-3 py-2 rounded text-black"
-                            >
-                                <option value="" disabled>
-                                    {categories.length ? 'Select category' : 'No categories'}
-                                </option>
-                                {categories.map(c => (
-                                    <option key={c.id} value={c.name}>
-                                        {c.name}
-                                    </option>
-                                ))}
-                                <option value="Uncategorized">Uncategorized</option>
-                            </select>
-                            <button
-                                onClick={() => handleAddItem(newItemName)}
-                                className="bg-sky-600 text-white px-4 py-2 rounded"
-                            >
-                                Add
-                            </button>
-                        </div>
-
-                        <div className="flex items-center justify-between mt-3">
-                            <div className="flex items-center gap-3">
-                                <label className="text-sm text-gray-600">Filter:</label>
+                            <div className="flex flex-col flex-1">
+                                <input
+                                    type="text"
+                                    placeholder="Add new item and press Enter"
+                                    value={newItemName}
+                                    onChange={e => setNewItemName(e.target.value)}
+                                    onKeyDown={handleKeyDownAdd}
+                                    className="flex-1 border px-4 py-2 rounded text-black"
+                                />
+                                {errorMessage && (
+                                    <div style={{color: 'red', fontSize: '0.85rem', marginTop: '4px'}}>
+                                        {errorMessage}
+                                    </div>
+                                )}
+                            </div>
                                 <select
-                                    value={filterCategory}
-                                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                                        setFilterCategory(e.target.value)
-                                    }
-                                    className="border px-2 py-1 rounded text-black"
+                                    value={newItemCategory ?? ''}
+                                    onChange={e => setNewItemCategory(e.target.value)}
+                                    className="border px-3 py-2 rounded text-black"
                                 >
-                                    <option value="All">All</option>
+                                    <option value="" disabled>
+                                        {categories.length ? 'Select category' : 'No categories'}
+                                    </option>
                                     {categories.map(c => (
-                                        <option key={c.id} value={c.name}>{c.name}</option>
+                                        <option key={c.id} value={c.name}>
+                                            {c.name}
+                                        </option>
                                     ))}
-                                    <option value="Other">Other</option>
+                                    <option value="Uncategorized">Uncategorized</option>
                                 </select>
-                                <button onClick={() => {
-                                    setFilterCategory('All');
-                                    setSearch('');
-                                }} className="text-sm text-black ml-2">Reset
+                                <button
+                                    onClick={() => handleAddItem(newItemName)}
+                                    className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded cursor-pointer"
+                                >
+                                    Add
                                 </button>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                                <button onClick={handleClearCompleted}
-                                        className="text-sm bg-purple-800 px-3 py-1 rounded">Clear completed
-                                </button>
-                                <span
-                                    className="text-sm text-gray-500">{items.filter(i => i.checked).length} completed</span>
+                            <div className="flex items-center justify-between mt-3">
+                                <div className="flex items-center gap-3">
+                                    <label className="text-sm text-gray-600">Filter:</label>
+                                    <select
+                                        value={filterCategory}
+                                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                            setFilterCategory(e.target.value)
+                                        }
+                                        className="border px-2 py-1 rounded text-black"
+                                    >
+                                        <option value="All">All</option>
+                                        {categories.map(c => (
+                                            <option key={c.id} value={c.name}>{c.name}</option>
+                                        ))}
+                                        <option value="Other">Other</option>
+                                    </select>
+                                    <button onClick={() => {
+                                        setFilterCategory('All');
+                                        setSearch('');
+                                    }} className="text-sm text-black ml-2">Reset
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <button onClick={handleClearCompleted}
+                                            className="text-sm bg-purple-700 hover:bg-purple-800 px-3 py-1 rounded cursor-pointer">Clear completed
+                                    </button>
+                                    <span
+                                        className="text-sm text-gray-500">{items.filter(i => i.checked).length} completed</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* items list */}
+                        {/* items list */}
                     <div className="space-y-3">
+                        {filteredItems.length !== 0 ?
+                        <button
+                            onClick={handleToggleAll}
+                            className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded mb-4 cursor-pointer"
+                        >
+                            {items.every(i => i.checked) ? "Deselect All" : "Select All"}
+                        </button> : null
+                        }
                         {filteredItems.length === 0 ? (
                             <div className="bg-white p-6 rounded-xl shadow text-center text-gray-500">No items
                                 yet.</div>
                         ) : (
                             filteredItems.map(item => (
                                 <div key={item.id}
-                                     className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition">
+                                     className={`flex items-center justify-between bg-white p-4 rounded-xl shadow-sm 
+                                        hover:shadow-md transition
+                                        ${duplicateName.toLowerCase() === item.name.toLowerCase() ? "bg-red-100 border border-red-300" : ""}
+                                      `}>
                                     <div className="flex items-center gap-4">
                                         <input type="checkbox" checked={item.checked}
-                                               onChange={() => handleToggle(item)} className="w-5 h-5"/>
+                                               onChange={() => handleToggle(item)} className="w-5 h-5 cursor-pointer"/>
                                         <div>
                                             <div
                                                 className={item.checked ? 'line-through text-gray-400 font-medium' : 'text-gray-800 font-medium'}>
