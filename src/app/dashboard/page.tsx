@@ -125,6 +125,7 @@ export default function DashboardPage() {
                             };
                         })
                     );
+                    setLoading(false);
                 });
 
                 unsubItems = onSnapshot(
@@ -151,8 +152,6 @@ export default function DashboardPage() {
 
             } catch (err) {
                 console.error('Error loading dashboard data', err);
-            } finally {
-                setLoading(false);
             }
         };
 
