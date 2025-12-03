@@ -163,7 +163,7 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
                                     : 'bg-sky-600 text-white hover:bg-sky-700'
                             }`}
                         >
-                            <button onClick={() => handleBadgeClick(name)} className="focus:outline-none">
+                            <button onClick={() => handleBadgeClick(name)} className="focus:outline-none cursor-pointer">
                                 {name}
                             </button>
                             <button

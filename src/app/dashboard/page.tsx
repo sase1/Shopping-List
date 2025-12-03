@@ -65,6 +65,7 @@ export default function DashboardPage() {
     const [categoryError, setCategoryError] = useState('');
     const [errorMessage, setErrorMessage] = useState("");
     const [duplicateName, setDuplicateName] = useState("");
+    const [copied, setCopied] = useState(false);
 
     const router = useRouter();
 
@@ -340,6 +341,15 @@ export default function DashboardPage() {
         router.push('/');
     };
 
+    const handleCopyId = () => {
+        if (!group) return;
+        navigator.clipboard.writeText(group.id);
+        setCopied(true);
+
+        // hide message after 2 seconds
+        setTimeout(() => setCopied(false), 2000);
+    };
+
     // derived filtered items
     const filteredItems = useMemo(() => {
         return items.filter(i => {
@@ -363,8 +373,13 @@ export default function DashboardPage() {
                         <h2 className="text-lg font-semibold text-black">{group.name}</h2>
                         <div className="mt-2 text-sm text-black">Group ID: <span className="font-mono">{group.id}</span>
                         </div>
+                        {copied && (
+                            <div className="text-green-600 text-sm mt-2 font-medium">
+                                ✓ Copied to clipboard
+                            </div>
+                        )}
                         <div className="mt-3">
-                            <button onClick={() => navigator.clipboard.writeText(group.id)}
+                            <button  onClick={handleCopyId}
                                     className="text-sm bg-sky-600 hover:bg-sky-700 text-white px-2 py-1 rounded cursor-pointer">Copy ID
                             </button>
                         </div>
@@ -402,24 +417,26 @@ export default function DashboardPage() {
 
 
                             <div className="mt-2 flex flex-col gap-2 max-h-44 overflow-auto pr-1">
-                                <button
+                                {categories.length > 0 &&
+                                    <button
                                     onClick={() => setFilterCategory('All')}
-                                    className={`text-left px-2 py-1 rounded ${filterCategory === 'All' ? 'bg-gray-700' : 'hover:bg-gray-50 text-black'}`}
-                                >
+                                    className={`text-left px-2 py-1 rounded cursor-pointer ${filterCategory === 'All' ? 'bg-gray-700' : 'hover:bg-gray-50 text-black'}`}
+                                    >
                                     All
-                                </button>
+                                    </button>
+                                }
                                 {categories.map(cat => (
                                     <div key={cat.id} className="flex items-center justify-between">
                                         <button
                                             onClick={() => setFilterCategory(cat.name)}
-                                            className={`text-left px-2 py-1 rounded flex-1 ${filterCategory === cat.name ? 'bg-gray-700' : 'hover:bg-gray-50 text-black'}`}
+                                            className={`text-left px-2 py-1 rounded flex-1 cursor-pointer ${filterCategory === cat.name ? 'bg-gray-700' : 'hover:bg-gray-50 text-black'}`}
                                         >
                                             {cat.name}
                                         </button>
                                         <button
                                             onClick={() => handleDeleteCategory(cat.id)}
                                             title="Delete category"
-                                            className="text-xs text-red-600 px-2"
+                                            className="text-xs text-red-600 px-2 cursor-pointer"
                                         >
                                             ✕
                                         </button>
@@ -438,7 +455,7 @@ export default function DashboardPage() {
                     <div className="bg-white p-6 rounded-xl shadow flex items-start justify-between">
                         <div className="flex flex-col gap-2 flex-1">
                             <div>
-                                <h1 className="text-2xl font-bold text-gray-800">{group.name || 'My Group'}</h1>
+                                <h1 className="text-2xl font-bold text-gray-800">{group ? `${group.name} shopping list` : 'My Group'}</h1>
                                 <p className="text-xs text-black">
                                     Share the Group ID to invite others to your list!
                                 </p>
