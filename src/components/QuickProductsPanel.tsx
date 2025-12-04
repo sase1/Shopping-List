@@ -110,17 +110,17 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
     return (
         <div className="bg-white p-4 rounded-xl shadow space-y-2">
             <div className="flex justify-between items-center">
-                <h3 className="font-semibold text-black">Quick Add Products Items</h3>
+                <h3 className="font-semibold text-black">Quickly add products to the list</h3>
                 <span className="text-xs text-black">{badges.length}</span>
-                {badges.length > 0 && (
-                    <button
-                        onClick={handleClearAll}
-                        className="text-sm text-red-600 hover:text-red-800 font-semibold cursor-pointer"
-                    >
-                        Clear All
-                    </button>
-                )}
             </div>
+            {badges.length > 0 && (
+                <button
+                    onClick={handleClearAll}
+                    className="text-sm text-red-600 hover:text-red-800 font-semibold cursor-pointer"
+                >
+                    Clear All
+                </button>
+            )}
 
             <div className="flex gap-2">
                 <input
