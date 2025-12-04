@@ -115,7 +115,7 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
                 {badges.length > 0 && (
                     <button
                         onClick={handleClearAll}
-                        className="text-sm text-red-600 hover:text-red-800 font-semibold"
+                        className="text-sm text-red-600 hover:text-red-800 font-semibold cursor-pointer"
                     >
                         Clear All
                     </button>
