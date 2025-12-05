@@ -281,7 +281,7 @@ export default function DashboardPage() {
 
         items.forEach(item => {
             const ref = doc(db, 'groups', group.id, 'items', item.id);
-            batch.update(ref, { checked: !allChecked });
+            batch.update(ref, {checked: !allChecked});
         });
 
         try {
@@ -290,7 +290,6 @@ export default function DashboardPage() {
             console.error("Failed to toggle all items", err);
         }
     };
-
 
 
     const handleKeyDownAdd = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -378,8 +377,9 @@ export default function DashboardPage() {
                             </div>
                         )}
                         <div className="mt-3">
-                            <button  onClick={handleCopyId}
-                                    className="text-sm bg-sky-600 hover:bg-sky-700 text-white px-2 py-1 rounded cursor-pointer">Copy ID
+                            <button onClick={handleCopyId}
+                                    className="text-sm bg-sky-600 hover:bg-sky-700 text-white px-2 py-1 rounded cursor-pointer">Copy
+                                ID
                             </button>
                         </div>
                     </div>
@@ -418,10 +418,10 @@ export default function DashboardPage() {
                             <div className="mt-2 flex flex-col gap-2 max-h-44 overflow-auto pr-1">
                                 {categories.length > 0 &&
                                     <button
-                                    onClick={() => setFilterCategory('All')}
-                                    className={`text-left px-2 py-1 rounded cursor-pointer ${filterCategory === 'All' ? 'bg-gray-700' : 'hover:bg-gray-50 text-black'}`}
+                                        onClick={() => setFilterCategory('All')}
+                                        className={`text-left px-2 py-1 rounded cursor-pointer ${filterCategory === 'All' ? 'bg-gray-700' : 'hover:bg-gray-50 text-black'}`}
                                     >
-                                    All
+                                        All
                                     </button>
                                 }
                                 {categories.map(cat => (
@@ -501,71 +501,72 @@ export default function DashboardPage() {
                                     </div>
                                 )}
                             </div>
-                                <select
-                                    value={newItemCategory ?? ''}
-                                    onChange={e => setNewItemCategory(e.target.value)}
-                                    className="border px-3 py-2 rounded text-black"
-                                >
-                                    <option value="" disabled>
-                                        {categories.length ? 'Select category' : 'No categories'}
+                            <select
+                                value={newItemCategory ?? ''}
+                                onChange={e => setNewItemCategory(e.target.value)}
+                                className="border px-3 py-2 rounded text-black"
+                            >
+                                <option value="" disabled>
+                                    {categories.length ? 'Select category' : 'No categories'}
+                                </option>
+                                {categories.map(c => (
+                                    <option key={c.id} value={c.name}>
+                                        {c.name}
                                     </option>
-                                    {categories.map(c => (
-                                        <option key={c.id} value={c.name}>
-                                            {c.name}
-                                        </option>
-                                    ))}
-                                    <option value="Uncategorized">Uncategorized</option>
-                                </select>
-                                <button
-                                    onClick={() => handleAddItem(newItemName)}
-                                    className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded cursor-pointer"
+                                ))}
+                                <option value="Uncategorized">Uncategorized</option>
+                            </select>
+                            <button
+                                onClick={() => handleAddItem(newItemName)}
+                                className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded cursor-pointer"
+                            >
+                                Add
+                            </button>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-3">
+                            <div className="flex items-center gap-3">
+                                <label className="text-sm text-gray-600">Filter:</label>
+                                <select
+                                    value={filterCategory}
+                                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                        setFilterCategory(e.target.value)
+                                    }
+                                    className="border px-2 py-1 rounded text-black"
                                 >
-                                    Add
+                                    <option value="All">All</option>
+                                    {categories.map(c => (
+                                        <option key={c.id} value={c.name}>{c.name}</option>
+                                    ))}
+                                    <option value="Other">Other</option>
+                                </select>
+                                <button onClick={() => {
+                                    setFilterCategory('All');
+                                    setSearch('');
+                                }} className="text-sm text-black ml-2">Reset
                                 </button>
                             </div>
 
-                            <div className="flex items-center justify-between mt-3">
-                                <div className="flex items-center gap-3">
-                                    <label className="text-sm text-gray-600">Filter:</label>
-                                    <select
-                                        value={filterCategory}
-                                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                                            setFilterCategory(e.target.value)
-                                        }
-                                        className="border px-2 py-1 rounded text-black"
-                                    >
-                                        <option value="All">All</option>
-                                        {categories.map(c => (
-                                            <option key={c.id} value={c.name}>{c.name}</option>
-                                        ))}
-                                        <option value="Other">Other</option>
-                                    </select>
-                                    <button onClick={() => {
-                                        setFilterCategory('All');
-                                        setSearch('');
-                                    }} className="text-sm text-black ml-2">Reset
-                                    </button>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <button onClick={handleClearCompleted}
-                                            className="text-sm bg-purple-700 hover:bg-purple-800 px-3 py-1 rounded cursor-pointer">Clear completed
-                                    </button>
-                                    <span
-                                        className="text-sm text-gray-500">{items.filter(i => i.checked).length} completed</span>
-                                </div>
+                            <div className="flex items-center gap-3">
+                                <button onClick={handleClearCompleted}
+                                        className="text-sm bg-purple-700 hover:bg-purple-800 px-3 py-1 rounded cursor-pointer">Clear
+                                    completed
+                                </button>
+                                <span
+                                    className="text-sm text-gray-500">{items.filter(i => i.checked).length} completed</span>
                             </div>
                         </div>
+                    </div>
 
-                        {/* items list */}
+                    {/* items list */}
                     <div className="space-y-3">
                         {filteredItems.length !== 0 ?
-                        <button
-                            onClick={handleToggleAll}
-                            className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded mb-4 cursor-pointer"
-                        >
-                            {items.every(i => i.checked) ? "Deselect All" : "Select All"}
-                        </button> : null
+                            <button
+                                onClick={handleToggleAll}
+                                className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded mb-4 cursor-pointer"
+                            >
+                                {items.every(i => i.checked) ? "Deselect All" : "Select All"}
+                            </button> : null
                         }
                         {filteredItems.length === 0 ? (
                             <div className="bg-white p-6 rounded-xl shadow text-center text-gray-500">No items
@@ -610,14 +611,18 @@ export default function DashboardPage() {
                             {members.map(m => (
                                 <div key={m.uid} className="flex items-center gap-3">
                                     <div
-                                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-gray-900"
+                                        className="w-16 h-12 rounded-full flex items-center justify-center text-sm font-semibold text-gray-900"
                                         style={{background: m.avatarColor ?? deterministicColorFromString(m.uid)}}
                                     >
                                         {initialsOf(m.name ?? m.email ?? m.uid)}
                                     </div>
-                                    <div className="flex flex-col">
-                                        <span
-                                            className="text-sm font-medium text-black">{m.name || m.email || m.uid}</span>
+                                    <div className="flex items-center w-full">
+                                        <span className="text-sm font-medium text-black">{m.name || m.email || m.uid}</span>
+                                        {m.uid === user.uid && (
+                                        <span className="ml-auto text-xs text-sky-600 font-semibold text-right">
+                                            (You)
+                                        </span>
+                                        )}
                                         {/*<span className="text-xs text-black font-mono">UID: {m.uid}</span>*/}
                                     </div>
                                 </div>

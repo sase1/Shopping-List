@@ -92,9 +92,14 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
         }
     };
 
-    // Delete all badges
+    // Delete all badges with confirmation
     const handleClearAll = async () => {
         if (!groupId) return;
+
+        const confirmed = window.confirm(
+            "Are you sure you want to clear all badges? This action cannot be undone."
+        );
+        if (!confirmed) return;
 
         try {
             const badgeDocs = await getDocs(collection(db, 'groups', groupId, 'quickBadges'));
@@ -106,6 +111,7 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
             console.error('Failed to clear badges', err);
         }
     };
+
 
     return (
         <div className="bg-white p-4 rounded-xl shadow space-y-2">
