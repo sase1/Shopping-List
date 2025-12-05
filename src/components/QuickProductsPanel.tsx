@@ -23,6 +23,9 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
     const [badges, setBadges] = useState<string[]>([]);
     const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
     const [badgeError, setBadgeError] = useState('');
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
 
     // Load real-time badges
     useEffect(() => {
@@ -92,14 +95,16 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
         }
     };
 
-    // Delete all badges with confirmation
+    // Delete all badges
     const handleClearAll = async () => {
-        if (!groupId) return;
+        // Show confirmation modal instead of using window.confirm
+        setShowConfirmModal(true);
+    };
 
-        const confirmed = window.confirm(
-            "Are you sure you want to clear all badges? This action cannot be undone."
-        );
-        if (!confirmed) return;
+// Then create another function that actually clears the badges when the user confirms
+    const confirmClearAll = async () => {
+        if (!groupId) return;
+        setDeleting(true); // start deleting
 
         try {
             const badgeDocs = await getDocs(collection(db, 'groups', groupId, 'quickBadges'));
@@ -109,9 +114,11 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
             setAddedItems(new Set());
         } catch (err) {
             console.error('Failed to clear badges', err);
+        } finally {
+            setDeleting(false); // done deleting
+            setShowConfirmModal(false);
         }
     };
-
 
     return (
         <div className="bg-white p-4 rounded-xl shadow space-y-2">
@@ -180,6 +187,40 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
                             </button>
                         </div>
                     ))}
+                    {showConfirmModal && (
+                        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+                            <div className="bg-white rounded-xl shadow-lg p-6 w-96 flex flex-col items-center">
+                                <h3 className="text-lg font-semibold text-black mb-4">Confirm Delete</h3>
+                                <p className="text-sm text-gray-700 mb-6 text-center">
+                                    {deleting ? 'Deleting quick items...' : 'Are you sure you want to clear all badges? This action cannot be undone.'}
+                                </p>
+
+                                {deleting ? (
+                                    <div className="flex items-center justify-center space-x-2">
+                                        <div className="w-6 h-6 border-4 border-t-red-600 border-gray-200 rounded-full animate-spin"></div>
+                                        <span className="text-sm text-black">Deleting...</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-end gap-3 w-full">
+                                        <button
+                                            onClick={() => setShowConfirmModal(false)}
+                                            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-black cursor-pointer"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={confirmClearAll}
+                                            className="px-4 py-2 rounded bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+                                        >
+                                            Delete All
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+
                 </div>
             )}
         </div>

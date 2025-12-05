@@ -543,7 +543,7 @@ export default function DashboardPage() {
                                 <button onClick={() => {
                                     setFilterCategory('All');
                                     setSearch('');
-                                }} className="text-sm text-black ml-2">Reset
+                                }} className="text-sm text-red-600 hover:text-red-900  ml-2 cursor-pointer">Reset
                                 </button>
                             </div>
 
