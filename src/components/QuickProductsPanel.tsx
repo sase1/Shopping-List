@@ -25,6 +25,7 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
     const [badgeError, setBadgeError] = useState('');
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [alreadyAddedMessage, setAlreadyAddedMessage] = useState('');
 
 
     // Load real-time badges
@@ -76,8 +77,14 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
         if (!addedItems.has(name)) {
             onAddItem(name);
             setAddedItems(prev => new Set(prev).add(name));
+            setAlreadyAddedMessage(''); // clear message if adding
+        } else {
+            setAlreadyAddedMessage(`"${name}" is already in the list`);
+            // optionally clear it after a few seconds
+            setTimeout(() => setAlreadyAddedMessage(''), 3000);
         }
     };
+
 
     // Delete a badge
     const handleBadgeDelete = async (name: string) => {
@@ -158,7 +165,11 @@ export default function QuickProductsPanel({ onAddItem, groupId }: QuickProducts
                 >
                     Add
                 </button>
+
             </div>
+            {alreadyAddedMessage && (
+                <p className="text-red-600 text-sm mt-1">{alreadyAddedMessage}</p>
+            )}
 
             {badgeError && (
                 <p className="text-red-600 text-sm mt-1">{badgeError}</p>
