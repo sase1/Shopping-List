@@ -357,35 +357,72 @@ export default function DashboardPage() {
         });
     }, [items, filterCategory, search]);
 
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+
     if (!user) return <p className="text-center mt-20 text-lg">Loading user…</p>;
     if (loading) return <p className="text-center mt-20 text-lg">Loading group…</p>;
     if (!group) return <p className="text-center mt-20 text-lg">No group found.</p>;
 
+
     return (
-        <div className="min-h-screen bg-gray-100 p-6">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* LEFT SIDEBAR: categories + members */}
-                <aside className="lg:col-span-1 space-y-6">
+        <div className="min-h-screen bg-gray-100 p-6 sm:pt-4 pt-20">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+                {/* Mobile: Open Sidebar Button */}
+                <div className="xl:hidden fixed top-4 left-4 z-50">
+                    <button
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="bg-sky-600 text-white px-3 py-2 rounded shadow"
+                    >
+                        ☰
+                    </button>
+                </div>
+
+                {/* Mobile overlay */}
+                {isSidebarOpen && (
+                    <div
+                        className="fixed inset-0 bg-opacity-30 z-40 xl:hidden"
+                        onClick={() => setIsSidebarOpen(false)}
+                    ></div>
+                )}
+
+                {/* Sidebar */}
+                <aside className={`fixed top-0 right-0 h-full w-full bg-gray-100 sm:p-0 p-5 z-50 transform transition-transform duration-300
+                    xl:relative xl:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'} `}
+                >
+                    {/* Close button */}
+                    <div className="flex justify-start mb-4 xl:hidden">
+                        <button
+                            onClick={() => setIsSidebarOpen(false)}
+                            className="text-gray-600 hover:text-gray-900 font-bold text-xl"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
                     {/* Group card */}
-                    <div className="bg-white p-4 rounded-xl shadow">
+                    <div className="bg-white p-4 rounded-xl shadow mb-6">
                         <h2 className="text-lg font-semibold text-black">{group.name}</h2>
-                        <div className="mt-2 text-sm text-black">Group ID: <span className="font-mono">{group.id}</span>
+                        <p className="text-xs text-black">Share the Group ID to invite others to your list!</p>
+                        <div className="mt-2 text-sm text-black">
+                            Group ID: <span className="font-mono">{group.id}</span>
                         </div>
                         {copied && (
-                            <div className="text-green-600 text-sm mt-2 font-medium">
-                                ✓ Copied to clipboard
-                            </div>
+                            <div className="text-green-600 text-sm mt-2 font-medium">✓ Copied to clipboard</div>
                         )}
                         <div className="mt-3">
-                            <button onClick={handleCopyId}
-                                    className="text-sm bg-sky-600 hover:bg-sky-700 text-white px-2 py-1 rounded cursor-pointer">Copy
-                                ID
+                            <button
+                                onClick={handleCopyId}
+                                className="text-sm bg-sky-600 hover:bg-sky-700 text-white px-2 py-1 rounded cursor-pointer"
+                            >
+                                Copy ID
                             </button>
                         </div>
                     </div>
 
                     {/* Categories */}
-                    <div className="bg-white p-4 rounded-xl shadow">
+                    <div className="bg-white p-4 rounded-xl shadow mb-4">
                         <div className="flex items-center justify-between">
                             <h3 className="font-semibold text-black">Categories</h3>
                             <span className="text-xs text-black">{categories.length}</span>
@@ -397,7 +434,7 @@ export default function DashboardPage() {
                                     value={newCategoryName}
                                     onChange={e => {
                                         setNewCategoryName(e.target.value);
-                                        setCategoryError(''); // clear when typing
+                                        setCategoryError('');
                                     }}
                                     placeholder="New category"
                                     className="flex-1 border px-2 py-1 rounded text-black"
@@ -410,25 +447,26 @@ export default function DashboardPage() {
                                 </button>
                             </div>
 
-                            {categoryError && (
-                                <p className="text-red-600 text-sm mt-1">{categoryError}</p>
-                            )}
-
+                            {categoryError && <p className="text-red-600 text-sm mt-1">{categoryError}</p>}
 
                             <div className="mt-2 flex flex-col gap-2 max-h-44 overflow-auto pr-1">
-                                {categories.length > 0 &&
+                                {categories.length > 0 && (
                                     <button
                                         onClick={() => setFilterCategory('All')}
-                                        className={`text-left px-2 py-1 rounded cursor-pointer ${filterCategory === 'All' ? 'bg-gray-700' : 'hover:bg-gray-50 text-black'}`}
+                                        className={`text-left px-2 py-1 rounded cursor-pointer ${
+                                            filterCategory === 'All' ? 'bg-gray-700 text-white' : 'hover:bg-gray-50 text-black'
+                                        }`}
                                     >
                                         All
                                     </button>
-                                }
+                                )}
                                 {categories.map(cat => (
                                     <div key={cat.id} className="flex items-center justify-between">
                                         <button
                                             onClick={() => setFilterCategory(cat.name)}
-                                            className={`text-left px-2 py-1 rounded flex-1 cursor-pointer ${filterCategory === cat.name ? 'bg-gray-700' : 'hover:bg-gray-50 text-black'}`}
+                                            className={`text-left px-2 py-1 rounded flex-1 cursor-pointer ${
+                                                filterCategory === cat.name ? 'bg-gray-700 text-white' : 'hover:bg-gray-50 text-black'
+                                            }`}
                                         >
                                             {cat.name}
                                         </button>
@@ -445,47 +483,70 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
-
-                </aside>
-
-                {/* MAIN: items (span 3 cols on large) */}
-                <main className="lg:col-span-2 space-y-6">
-                    {/* header */}
-                    <div className="bg-white p-6 rounded-xl shadow flex items-start justify-between">
-                        <div className="flex flex-col gap-2 flex-1">
-                            <div>
-                                <h1 className="text-2xl font-bold text-gray-800">{group ? `${group.name} shopping list` : 'My Group'}</h1>
-                                <p className="text-xs text-black">
-                                    Share the Group ID to invite others to your list!
-                                </p>
-                            </div>
-
-
+                    {/* Members */}
+                    <div className="bg-white p-4 rounded-xl shadow">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-black">Members</h3>
+                            <span className="text-xs text-black">{members.length}</span>
                         </div>
 
-                        <div className="flex items-center gap-3 ml-4">
+                        <div className="mt-3 flex flex-col gap-3 max-h-64 overflow-auto pr-1">
+                            {members.map(m => (
+                                <div key={m.uid} className="flex items-center gap-3">
+                                    <div
+                                        className="w-16 h-12 rounded-full flex items-center justify-center text-sm font-semibold text-gray-900"
+                                        style={{background: m.avatarColor ?? deterministicColorFromString(m.uid)}}
+                                    >
+                                        {initialsOf(m.name ?? m.email ?? m.uid)}
+                                    </div>
+                                    <div className="flex items-center w-full">
+                                        <span
+                                            className="text-sm font-medium text-black">{m.name || m.email || m.uid}</span>
+                                        {m.uid === user.uid && (
+                                            <span
+                                                className="ml-auto text-xs text-sky-600 font-semibold text-right">(You)</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-4">
                             <button
                                 onClick={handleLogout}
-                                className="bg-red-600 hover:bg-red-700 cursor-pointer text-white px-4 py-2 rounded"
+                                className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded cursor-pointer"
                             >
                                 Logout
                             </button>
                         </div>
                     </div>
 
+                </aside>
 
-                    {/* add item */}
-                    <div className="bg-white p-4 rounded-xl shadow">
-                        <div className="mb-4">
-                            <input
-                                type="text"
-                                placeholder="Search items..."
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                className="border px-3 py-2 rounded-md text-black"
-                            />
+
+                {/* MAIN CONTENT */}
+                <main className="lg:col-span-2 space-y-6">
+
+                    {/* Header + Filters + Add Item */}
+                    <div className="bg-white p-6 rounded-xl shadow space-y-4">
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-800">
+                                {group ? `${group.name} shopping list` : 'My Group'}
+                            </h1>
+
                         </div>
-                        <div className="flex gap-3">
+
+                        {/* Search */}
+                        <input
+                            type="text"
+                            placeholder="Search items..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="border px-3 py-2 rounded-md text-black w-full"
+                        />
+
+                        {/* Add Item + Category */}
+                        <div className="flex flex-col sm:flex-row gap-3">
                             <div className="flex flex-col flex-1">
                                 <input
                                     type="text"
@@ -524,33 +585,40 @@ export default function DashboardPage() {
                             </button>
                         </div>
 
-                        <div className="flex items-center justify-between mt-3">
-                            <div className="flex items-center gap-3">
+                        {/* Filters + Clear Completed */}
+                        <div className="flex flex-col sm:flex-row justify-between gap-3">
+                            <div className="flex items-center gap-3 flex-wrap">
                                 <label className="text-sm text-gray-600">Filter:</label>
                                 <select
                                     value={filterCategory}
-                                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                                        setFilterCategory(e.target.value)
-                                    }
+                                    onChange={e => setFilterCategory(e.target.value)}
                                     className="border px-2 py-1 rounded text-black"
                                 >
                                     <option value="All">All</option>
                                     {categories.map(c => (
-                                        <option key={c.id} value={c.name}>{c.name}</option>
+                                        <option key={c.id} value={c.name}>
+                                            {c.name}
+                                        </option>
                                     ))}
                                     <option value="Other">Other</option>
                                 </select>
-                                <button onClick={() => {
-                                    setFilterCategory('All');
-                                    setSearch('');
-                                }} className="text-sm text-red-600 hover:text-red-900  ml-2 cursor-pointer">Reset
+                                <button
+                                    onClick={() => {
+                                        setFilterCategory('All');
+                                        setSearch('');
+                                    }}
+                                    className="text-sm text-red-600 hover:text-red-900 ml-2 cursor-pointer"
+                                >
+                                    Reset
                                 </button>
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <button onClick={handleClearCompleted}
-                                        className="text-sm bg-purple-700 hover:bg-purple-800 px-3 py-1 rounded cursor-pointer">Clear
-                                    completed
+                                <button
+                                    onClick={handleClearCompleted}
+                                    className="text-sm bg-purple-700 hover:bg-purple-800 px-3 py-1 rounded cursor-pointer"
+                                >
+                                    Clear completed
                                 </button>
                                 <span
                                     className="text-sm text-gray-500">{items.filter(i => i.checked).length} completed</span>
@@ -558,86 +626,59 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* items list */}
+                    {/* Items List */}
                     <div className="space-y-3">
-                        {filteredItems.length !== 0 ?
+                        {filteredItems.length !== 0 && (
                             <button
                                 onClick={handleToggleAll}
-                                className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded mb-4 cursor-pointer"
+                                className="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded mb-4 cursor-pointer w-full"
                             >
-                                {items.every(i => i.checked) ? "Deselect All" : "Select All"}
-                            </button> : null
-                        }
+                                {items.every(i => i.checked) ? 'Deselect All' : 'Select All'}
+                            </button>
+                        )}
                         {filteredItems.length === 0 ? (
-                            <div className="bg-white p-6 rounded-xl shadow text-center text-gray-500">No items
-                                yet.</div>
+                            <div className="bg-white p-6 rounded-xl shadow text-center text-gray-500">
+                                No items yet.
+                            </div>
                         ) : (
                             filteredItems.map(item => (
-                                <div key={item.id}
-                                     className={`flex items-center justify-between bg-white p-4 rounded-xl shadow-sm 
-                                        hover:shadow-md transition
-                                        ${duplicateName.toLowerCase() === item.name.toLowerCase() ? "bg-red-100 border border-red-300" : ""}
-                                      `}>
+                                <div
+                                    key={item.id}
+                                    className={`flex items-center justify-between bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition ${duplicateName.toLowerCase() === item.name.toLowerCase() ? 'bg-red-100 border border-red-300' : ''}`}
+                                >
                                     <div className="flex items-center gap-4">
-                                        <input type="checkbox" checked={item.checked}
-                                               onChange={() => handleToggle(item)} className="w-5 h-5 cursor-pointer"/>
+                                        <input
+                                            type="checkbox"
+                                            checked={item.checked}
+                                            onChange={() => handleToggle(item)}
+                                            className="w-5 h-5 cursor-pointer"
+                                        />
                                         <div>
                                             <div
                                                 className={item.checked ? 'line-through text-gray-400 font-medium' : 'text-gray-800 font-medium'}>
                                                 {item.name}
                                             </div>
-                                            <div
-                                                className="text-xs text-gray-500 mt-1">{item.category ?? 'Uncategorized'} •
-                                                added by {getDisplayName(item.addedByUid)}</div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                {item.category ?? 'Uncategorized'} • added
+                                                by {getDisplayName(item.addedByUid)}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div
-                                        className="text-xs text-gray-400 font-mono">{item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleString() : ''}</div>
+                                    <div className="text-xs text-gray-400 font-mono">
+                                        {item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleString() : ''}
+                                    </div>
                                 </div>
                             ))
                         )}
+                        {/* QuickProductsPanel */}
+                        <QuickProductsPanel onAddItem={handleAddItem} groupId={group.id}/>
                     </div>
                 </main>
-                <aside className="lg:col-span-1 space-y-6">
 
-                    {/* Members */}
-                    <div className="bg-white p-4 rounded-xl shadow">
-                        <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-black">Members</h3>
-                            <span className="text-xs text-black">{members.length}</span>
-                        </div>
+                {/* RIGHT SIDEBAR */}
 
-                        <div className="mt-3 flex flex-col gap-3 max-h-64 overflow-auto pr-1">
-                            {members.map(m => (
-                                <div key={m.uid} className="flex items-center gap-3">
-                                    <div
-                                        className="w-16 h-12 rounded-full flex items-center justify-center text-sm font-semibold text-gray-900"
-                                        style={{background: m.avatarColor ?? deterministicColorFromString(m.uid)}}
-                                    >
-                                        {initialsOf(m.name ?? m.email ?? m.uid)}
-                                    </div>
-                                    <div className="flex items-center w-full">
-                                        <span className="text-sm font-medium text-black">{m.name || m.email || m.uid}</span>
-                                        {m.uid === user.uid && (
-                                        <span className="ml-auto text-xs text-sky-600 font-semibold text-right">
-                                            (You)
-                                        </span>
-                                        )}
-                                        {/*<span className="text-xs text-black font-mono">UID: {m.uid}</span>*/}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-
-                    <QuickProductsPanel
-                        onAddItem={handleAddItem}
-                        groupId={group.id}
-                    />
-
-                </aside>
             </div>
         </div>
     );
+
 }
